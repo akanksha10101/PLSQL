@@ -1,0 +1,154 @@
+🔹 Building Blocks of PL/SQL Programs
+
+🧱 1. Block Structure
+
+        PL/SQL is a block-structured language — every program is made of one or more blocks.
+        Each block has three sections, defined by keywords:
+        
+                      DECLARE → Declarative Section
+                                Used to declare variables, constants, cursors, etc.
+                      
+                      BEGIN → Executable Section
+                                Contains statements that are executed when the block runs.
+                      
+                      EXCEPTION → Exception Handling Section
+                                Used to trap and handle runtime errors.
+        
+        Only the Executable section is mandatory — DECLARE and EXCEPTION are optional.
+        Blocks can be nested — one block inside another.
+
+💬 2. Examples of PL/SQL Blocks
+            ✅ Simple “Hello World” block
+            
+            BEGIN
+              DBMS_OUTPUT.PUT_LINE('Hello World!');
+            END;
+            
+            
+            Contains only an executable section.
+            Displays text using the DBMS_OUTPUT.PUT_LINE procedure.
+
+            ✅ Block with Variable Declaration
+                DECLARE
+                  l_message VARCHAR2(100) := 'Hello World!';
+                BEGIN
+                  DBMS_OUTPUT.PUT_LINE(l_message);
+                END;
+            
+            
+                  Declares a variable l_message.
+                  Displays variable content instead of a literal.
+            
+                  Common naming convention:
+                                        l_ prefix → local variable
+                                          g_ prefix → global variable
+
+              ✅ Block with Exception Handling
+                              DECLARE
+                                l_message VARCHAR2(100) := 'Hello World!';
+                              BEGIN
+                                DBMS_OUTPUT.PUT_LINE(l_message);
+                              EXCEPTION
+                                WHEN OTHERS THEN
+                                  DBMS_OUTPUT.PUT_LINE(SQLERRM);
+                              END;
+              
+              
+                              Catches any runtime error and displays its message.
+
+                        ✅ Nested Block Example
+
+                        DECLARE
+                          l_message VARCHAR2(100) := 'Hello';
+                        BEGIN
+                          DECLARE
+                            l_message2 VARCHAR2(100) := l_message || ' World!';
+                          BEGIN
+                            DBMS_OUTPUT.PUT_LINE(l_message2);
+                          END;
+                        EXCEPTION
+                          WHEN OTHERS THEN
+                            DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_STACK);
+                        END;
+                        
+                        
+                        Demonstrates nested blocks and string concatenation (||).
+
+⚙️ 3. Running PL/SQL Blocks
+
+              PL/SQL blocks can be executed using tools like SQL*Plus or IDEs (SQL Developer, TOAD, etc.).
+              
+              In SQL*Plus:
+              Connect to the database.
+              Enable output: SET SERVEROUTPUT ON.
+              Enter the block and type / to execute it.
+
+🧩 4. Anonymous vs. Named Blocks
+                  
+                  Anonymous blocks:
+                                  No name.
+                                  Used for quick scripts or one-time logic.
+                  
+                  Named blocks (subprograms):
+                                  Have names and can be reused.
+                  
+                  Two main types:
+                  
+                                Procedures → perform an action.
+                                Functions → return a value.
+
+🔧 5. Creating a Procedure
+              CREATE OR REPLACE PROCEDURE hello_world IS
+                l_message VARCHAR2(100) := 'Hello World!';
+              BEGIN
+                DBMS_OUTPUT.PUT_LINE(l_message);
+              END hello_world;
+              
+              
+              Creates a reusable procedure.
+              Can be executed by calling:
+              
+              BEGIN
+                hello_world;
+              END;
+
+🌍 6. Adding Parameters
+                  CREATE OR REPLACE PROCEDURE hello_place (place_in IN VARCHAR2) IS
+                    l_message VARCHAR2(100);
+                  BEGIN
+                    l_message := 'Hello ' || place_in;
+                    DBMS_OUTPUT.PUT_LINE(l_message);
+                  END hello_place;
+                  
+                  
+                  place_in is an input parameter (IN mode).
+
+                  Example call:
+                  BEGIN
+                    hello_place('World');
+                    hello_place('Universe');
+                  END;
+
+🧠 7. Converting to a Function
+              CREATE OR REPLACE FUNCTION hello_message (place_in IN VARCHAR2)
+              RETURN VARCHAR2 IS
+              BEGIN
+                RETURN 'Hello ' || place_in;
+              END hello_message;
+              
+              
+              A function returns a value using the RETURN statement.
+              
+              Can be used in PL/SQL or SQL:
+              
+              DECLARE
+                l_message VARCHAR2(100);
+              BEGIN
+                l_message := hello_message('Universe');
+              END;
+              
+              
+              or
+              
+              INSERT INTO message_table (message_date, message_text)
+              VALUES (SYSDATE, hello_message('Chicago'));
