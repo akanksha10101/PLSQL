@@ -1,0 +1,184 @@
+🧩 What is PL/SQL
+
+                PL/SQL (Procedural Language / Structured Query Language) is Oracle’s extension of SQL.
+                Combines SQL’s data manipulation capabilities with procedural programming constructs like loops, conditions, and variables.
+                Executes inside the Oracle Database engine — improving efficiency, agility, and performance of database-driven applications.
+                
+                Enables developers to write business logic, not just SQL queries.
+                
+                Offers benefits such as:
+                            Tight integration with SQL
+                            Reduced network traffic
+                            Portability across Oracle instances
+                            Improved performance and maintainability
+
+🧠 PL/SQL Code Structure
+
+                  Code is written in blocks — each block can contain:
+                  
+                              Declarations
+                              
+                              Executable statements
+                              
+                              Exception handling
+
+                    Can be:
+                    
+                              Anonymous blocks
+                              Stored procedures
+                              Functions
+                              Packages
+                              Triggers
+
+⚙️ Conditional Branching in PL/SQL
+
+                  Used to control the flow of execution based on conditions.
+
+                    🔸 IF Statements
+                    
+                                Three types:
+                                
+                                IF THEN END IF
+                                          Simplest form.
+                                          
+                                          Executes statements only if the condition is TRUE.
+                                          
+                                          IF l_salary > 40000 THEN
+                                             give_bonus(l_employee_id, 500);
+                                          END IF;
+
+
+                        IF THEN ELSE END IF
+                        
+                                  Executes one of two blocks depending on condition result.
+                        
+                                    IF NVL(l_salary,0) <= 40000 THEN
+                                       give_bonus(l_employee_id, 0);
+                                    ELSE
+                                       give_bonus(l_employee_id, 500);
+                                    END IF;
+                                    
+                        
+                        IF THEN ELSIF ELSE END IF
+                        
+                                    For multiple mutually exclusive conditions.
+                                    
+                                    IF l_salary BETWEEN 10000 AND 20000 THEN
+                                       give_bonus(l_employee_id, 1000);
+                                    ELSIF l_salary > 20000 THEN
+                                       give_bonus(l_employee_id, 500);
+                                    ELSE
+                                       give_bonus(l_employee_id, 0);
+                                    END IF;
+
+🔸 CASE Statements and Expressions
+
+                              Alternative to IF statements; often cleaner and more readable.
+                              
+                              ✅ Simple CASE Statement
+                              
+                                            Compares one expression to multiple possible values.
+                                            
+                                            CASE l_employee_type
+                                               WHEN 'S' THEN award_bonus(l_employee_id);
+                                               WHEN 'C' THEN award_commissioned_bonus(l_employee_id);
+                                               ELSE RAISE invalid_employee_type;
+                                            END CASE;
+                                            
+                                            
+                                            If no ELSE is specified and no match is found, raises CASE_NOT_FOUND.
+                              
+                              ✅ Searched CASE Statement
+                              
+                                              Evaluates multiple Boolean conditions.
+                                              
+                                              CASE
+                                                 WHEN l_salary BETWEEN 10000 AND 20000 THEN give_bonus(l_employee_id, 1500);
+                                                 WHEN l_salary > 20000 THEN give_bonus(l_employee_id, 1000);
+                                                 ELSE give_bonus(l_employee_id, 0);
+                                              END CASE;
+                                              
+                              ✅ CASE Expression
+                              
+                                                Returns a single value (not a statement).
+                                                
+                                                give_bonus(l_employee_id,
+                                                  CASE
+                                                     WHEN l_salary BETWEEN 10000 AND 20000 THEN 1500
+                                                     WHEN l_salary > 40000 THEN 500
+                                                     ELSE 0
+                                                  END);
+                                                
+                              
+                                                If no condition matches, returns NULL (no error).
+
+🔁 Iterative Processing (Loops in PL/SQL)
+
+                              PL/SQL supports three main types of loops:
+                              
+                              1. FOR Loop
+                              
+                              Used when number of iterations is known.
+                              
+                              Numeric FOR loop:
+                              
+                              FOR l_year IN start_year .. end_year LOOP
+                                 display_total_sales(l_year);
+                              END LOOP;
+                              
+                              
+                              Cursor FOR loop:
+                              
+                              FOR rec IN (SELECT * FROM sales_data WHERE year BETWEEN start_year AND end_year)
+                              LOOP
+                                 display_total_sales(rec);
+                              END LOOP;
+                              
+                              
+                              Automatically handles variable declaration, open, fetch, and close.
+                              
+                              2. Simple (Infinite) Loop
+                              
+                              Executes repeatedly until exited explicitly.
+                              
+                              LOOP
+                                 EXIT WHEN l_year > end_year;
+                                 display_total_sales(l_year);
+                                 l_year := l_year + 1;
+                              END LOOP;
+                              
+                              
+                              Must contain EXIT or EXIT WHEN to stop.
+                              
+                              3. WHILE Loop
+                              
+                              Checks condition before each iteration (may not run at all).
+                              
+                              WHILE l_year <= end_year LOOP
+                                 display_total_sales(l_year);
+                                 l_year := l_year + 1;
+                              END LOOP;
+                              
+                              
+                              Condition must eventually become FALSE to prevent infinite looping.
+                              
+                              ⚖️ Best Practices: One Way In, One Way Out
+                              
+                              Follow structured programming principles:
+                              
+                              Each loop should have a single entry and exit point.
+                              
+                              Avoid:
+                              
+                              Multiple EXIT or RETURN statements.
+                              
+                              Using GOTO inside loops.
+                              
+                              Example — using WHILE for cleaner exit logic:
+                              
+                              WHILE (l_year <= end_year AND total_sales_for_year(l_year) > 0)
+                              LOOP
+                                 l_return := l_return + total_sales_for_year(l_year);
+                                 l_year := l_year + 1;
+                              END LOOP;
+                              RETURN l_return;
