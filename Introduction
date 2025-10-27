@@ -1,0 +1,26 @@
+🔹 What is PL/SQL?
+
+          PL/SQL stands for Procedural Language / Structured Query Language.
+          It is Oracle’s extension of SQL designed for developers working with the Oracle Database.
+          Combines procedural programming features (like loops, IF statements) with SQL for database manipulation.
+          Allows writing blocks of code that can include variables, conditions, loops, and SQL statements.
+
+
+🔹 Role in the Technology Stack
+
+Applications are built using a stack of technologies:
+
+            Top layer: Presentation layer (user interface) — e.g., Java.
+            Middle layer: Database software (stores and manipulates data).
+            Bottom layer: Operating system and hardware interaction.
+
+SQL is used to manipulate data in relational databases.
+PL/SQL extends SQL to support full business logic and application functionality.
+
+🔹 Why PL/SQL?
+
+              Extends SQL’s capabilities with procedural logic (e.g., IF-THEN, loops).
+              Provides tight integration with SQL, enabling complex database operations.
+              Offers better performance by reducing network traffic between applications and the database.
+              Enhances portability — PL/SQL programs can run on any Oracle Database instance.
+               Improves maintainability of applications that use both SQL and PL/SQL.
