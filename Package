@@ -1,0 +1,73 @@
+Packages in PL/SQL
+
+            A package groups related PL/SQL elements—procedures, functions, variables, types, and cursors—into a named unit.
+            Acts as a container for logically related code, improving code organization and encapsulation.
+
+Structure of a Package
+
+                Specification (spec)
+                                 Public interface of the package.
+                                 Lists accessible items (procedures, functions, constants, etc.).
+
+                Body
+
+                              Contains the implementation of the declared items.
+                              Can include private elements and an initialization section.
+
+🔹 Advantages of Using Packages
+
+                      Group related functionality – Easier to locate, reuse, and maintain code.
+                      Encapsulation & information hiding – Internal logic can be modified without affecting external code.
+                      Improved performance – Package elements load once into memory; subsequent calls are faster.
+                      Reduced recompilation – Changing the package body doesn’t invalidate dependent code if the spec is unchanged.
+
+    Session-level data persistence – Variables retain values throughout a user session.
+
+🔹 Example: employee_pkg
+
+          Demonstrates how to organize reusable logic for employee name handling.
+          
+          Specification defines:
+                A subtype fullname_t as VARCHAR2(100).
+                Two overloaded functions fullname() (one takes names, one takes employee_id).
+                Body implements logic for name formatting and retrieval.
+                
+          Benefits:
+          
+                  Centralized name formatting logic.
+                  No code duplication.
+                  Easy updates—change in one place reflects everywhere.
+
+🔹 Package-Level Data
+
+            Variables/constants declared at the package level (outside procedures/functions).
+            Retain values for the duration of the session.
+            
+            Example: timer_pkg package uses a global variable g_start_time to measure execution time between calls.
+            Supports session-persistent memory, useful for timing, caching, and tracking state.
+
+🔹 Subprogram Overloading
+
+          Overloading = Multiple subprograms with the same name but different parameter types or counts.
+          Simplifies APIs and improves usability.
+          
+          Example: my_output package overloads put_line() to handle:
+          
+          VARCHAR2 values
+          BOOLEAN values
+          DATE values with format mask
+          Compiler automatically chooses the correct version based on argument type.
+
+🔹 Best Practices
+
+            Always organize procedures and functions into packages for clarity and scalability.
+            Use overloading to simplify and unify your APIs.
+            Take advantage of package-level data for persistent session state.
+            Avoid writing standalone schema-level procedures unless absolutely necessary.
+
+🔹 Package State & ORA-04068 Error
+
+A package with package-level variables is stateful.
+When recompiled, all sessions using it may raise ORA-04068 (“existing state of packages has been discarded”).
+This invalidates all current package data in the session.
+Oracle Database 11gR2 introduced Edition-Based Redefinition, allowing “hot patching” of applications without disconnecting users.
