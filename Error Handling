@@ -1,0 +1,188 @@
+🔹 Why Error Handling Matters
+
+                      Even perfect PL/SQL code can encounter runtime errors (invalid data, deadlocks, constraint violations, etc.).
+                      Proper error handling determines whether your application remains stable or causes issues for users and developers.
+
+Error management involves:
+
+                      Identifying types of exceptions
+                      Knowing when and how they’re raised
+                      Defining and handling them appropriately
+                      Reporting useful diagnostic information
+
+🔹 Types of Exceptions
+
+            Internally Defined Exceptions
+            
+                              Raised automatically by Oracle processes.
+                              Always have an error code, but no predefined name.
+                              Example: ORA-00060 (deadlock detected).
+            
+            Predefined Exceptions
+            
+                              Internally defined exceptions given a name by PL/SQL.
+                              Most are defined in the STANDARD package.
+                              Example: ORA-00001 → DUP_VAL_ON_INDEX (unique constraint violation).
+            
+            User-Defined Exceptions
+                                
+                                Declared explicitly by the programmer.
+                                Used to represent application-specific errors or to name unnamed Oracle errors.
+                                Declared using the EXCEPTION keyword.
+
+🔹 Getting Error Information
+                                    Information                 Type	                                    Function or Procedure	Notes
+                                    Error code              	SQLCODE                          	        Not usable inside SQL statements
+                                    Error message	       SQLERRM or DBMS_UTILITY.FORMAT_ERROR_STACK    	Not usable inside SQL statements
+                                    Line number            DBMS_UTILITY.FORMAT_ERROR_BACKTRACE	        Shows where the error occurred
+                                    Call stack	          DBMS_UTILITY.FORMAT_CALL_STACK	              Shows the path to the error
+
+
+
+🔹 Exception Sections in PL/SQL Blocks
+
+                                              A PL/SQL block has three sections:
+                                              
+                                                                  Declaration
+                                                                  Executable
+                                                                  Exception
+                                              
+                                              When an exception occurs:
+                                                                  Remaining executable statements are skipped.
+                                                                  Control passes to the exception section.
+                                                                  If handled → execution continues.
+                                                                  If not handled, the exception propagates outward to enclosing blocks.
+
+🔹 Raising Exceptions
+                            1. RAISE Statement
+                            
+                                          Used to raise predefined or user-defined exceptions.
+                                          
+                                                  Example:
+                                                  
+                                                  IF department_id_in IS NULL THEN
+                                                      RAISE VALUE_ERROR;
+                                                  END IF;
+                                          Can also be used in exception sections to re-raise the current exception (RAISE;).
+                                          
+                            2. RAISE_APPLICATION_ERROR
+                            
+                                            Used to raise application-specific exceptions with custom messages.
+                                            
+                                            Syntax:
+                                            RAISE_APPLICATION_ERROR(-20500, 'Employee must be at least 18 years old.');
+                                            Error code must be between –20999 and –20000.
+                                            Allows passing meaningful messages to users.
+
+🔹 Defining User-Defined Exceptions
+
+                                        Declare using:
+                                        e_balance_too_low EXCEPTION;
+
+                                        Optionally associate a specific Oracle error code:
+                                       PRAGMA EXCEPTION_INIT(e_balance_too_low, -20000);
+                                        
+                                        Raised manually using:
+                                                  RAISE e_balance_too_low;
+
+🔹 Handling Exceptions
+                                  Exception Section Syntax
+                                  EXCEPTION
+                                     WHEN exception_name THEN
+                                        -- handle
+                                     WHEN exception1 OR exception2 THEN
+                                        -- handle multiple
+                                     WHEN OTHERS THEN
+                                        -- handle all
+                                  END;
+                                  
+                                  
+                                  WHEN OTHERS must appear last.
+                          Steps to follow in exception handlers:
+                                  
+                                  Log the error details.
+                                  Re-raise the exception so higher-level code knows about it.
+
+🔹 Reraising Exceptions
+
+                  Inside exception handler:
+                  RAISE; → propagates the current exception outward.
+                  Ensures the error is not silently swallowed.
+                  Outside handler, RAISE; without a name causes a compile-time error.
+
+🔹 Recording Errors (Logging)
+
+                          Store error info in a table for analysis:
+                          
+                                  CREATE TABLE error_log (
+                                     error_code    INTEGER,
+                                     error_message VARCHAR2(4000),
+                                     backtrace     CLOB,
+                                     callstack     CLOB,
+                                     created_on    DATE,
+                                     created_by    VARCHAR2(30)
+                                  );
+                          
+                          
+                          Example exception handler:
+                          
+                          EXCEPTION
+                             WHEN OTHERS THEN
+                                record_error();
+                                RAISE;
+
+🔹 Logging Best Practice
+
+                          Avoid embedding INSERT statements directly in every handler.
+
+                          Instead, wrap logging logic in a procedure (e.g., record_error).
+
+                          Example:
+                          CREATE OR REPLACE PROCEDURE record_error IS
+                             PRAGMA AUTONOMOUS_TRANSACTION;
+                             l_code PLS_INTEGER := SQLCODE;
+                             l_mesg VARCHAR2(32767) := SQLERRM;
+                          BEGIN
+                             INSERT INTO error_log (...) VALUES (...);
+                             COMMIT;
+                          END;
+
+
+          Benefits:
+
+          Reduces code duplication.
+          Makes error logging transaction-independent using PRAGMA AUTONOMOUS_TRANSACTION.
+
+          Log entries are preserved even if the main transaction rolls back.
+
+🔹 Exceptions in Declaration Section
+
+                  Errors raised during declaration are not handled by the block’s exception section.
+                   They propagate to the outer block.
+                  
+                  Example:
+                  
+                  DECLARE
+                     l_num NUMBER(1) := 100;  -- raises VALUE_ERROR
+                  ⇒ Unhandled, because raised during declaration.
+                 Solution: move assignments to the executable section.
+
+🔹 Exceptions and Rollbacks
+
+                      Unhandled exceptions do not automatically rollback changes.
+                      Rollback happens only if:
+                      A ROLLBACK statement is coded explicitly, or
+                      The unhandled exception propagates to the host environment.
+                      
+                      Example:
+                      DELETE succeeds.
+                      UPDATE fails → rollback happens only after the unhandled exception exits the block.
+
+🔹 Compiler Warning: PLW-06009
+
+                              Added in Oracle 11g R1.
+                              Warns when a WHEN OTHERS handler doesn’t end with RAISE or RAISE_APPLICATION_ERROR.
+                              Helps detect “swallowed” exceptions.
+                              
+                              Example warning:
+                             PLW-06009: procedure OTHERS handler does not end in RAISE or RAISE_APPLICATION_ERROR
