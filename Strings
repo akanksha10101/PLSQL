@@ -1,0 +1,90 @@
+🧩 What Is a String?
+
+                A string is a sequence of characters — letters, digits, symbols, or even multilingual text (like Chinese, 字串).
+                In PL/SQL, strings can be:
+                          Fixed-length → CHAR(n) – always padded to n characters.
+                          Variable-length → VARCHAR2(n) – up to 32,767 chars in PL/SQL, no padding.
+                          Large strings → CLOB – up to 128 TB.
+
+✍️ Declaring String Variables
+
+              You must declare a variable using one of Oracle’s string data types:
+
+                              CHAR(n) / NCHAR(n) → fixed length.
+                              VARCHAR2(n) / NVARCHAR2(n) → variable length.
+                              CLOB / NCLOB → large objects (no length specified).
+
+                    Example:
+                    DECLARE
+                       l_company_name VARCHAR2(100);
+                    If you omit the length:
+                              l_company_name VARCHAR2; 
+                              -- ❌ Error: PLS-00215 (must specify length)
+
+⚙️ Data Type Guidelines
+                      Use Case	                               Recommended Type
+                      Fixed-length                          data (e.g., ‘Y/N’, SSN)	CHAR
+                      Variable-length (most cases)               	VARCHAR2
+                      Very large text (e.g., documents)           	CLOB
+                      
+                            Note: CHAR values are space-padded, which can affect equality comparisons.
+
+🧮 String Functions in PL/SQL
+                1. Concatenation
+                                  CONCAT('Hello', 'World')
+                                  'Hello' || ' ' || 'World'
+
+                2. Case Conversion
+                                    UPPER('Oracle') → ORACLE
+                                    LOWER('Oracle') → oracle
+                                    INITCAP('oracle corp') → Oracle Corp
+
+                3. Substring Extraction
+                                    SUBSTR('Oracle', 2, 3) → rac
+                                    SUBSTR('Oracle', -1, 1) → e
+
+                4. Find Position
+                                    INSTR('steven feuerstein', 'e') → 3
+                                    INSTR('steven feuerstein', 'e', 6) → 9
+                
+                5. Padding
+                                    LPAD('Sub-header', 13, '.') → ...Sub-header
+                                    RPAD('abc', 20, '123') → abc123123123...
+
+                6. Replacement
+                                    REPLACE('abc-a-b-c-abc','abc','123') → 123-a-b-c-123
+                                    TRANSLATE('abc-a-b-c-abc','abc','123') → 123-1-2-3-123
+
+                7. Trimming
+                                    RTRIM('Hello...','.') → Hello
+                                    LTRIM('   Hi') → Hi
+                                    TRIM(BOTH '.' FROM '...Hi...') → Hi
+
+🚨 Common Errors
+                  1. String Too Long
+                  
+                                  If assigned string exceeds declared length:
+                                  
+                                        DECLARE
+                                          l_name VARCHAR2(3);
+                                        BEGIN
+                                          l_name := 'Steven'; -- ❌ ORA-06502: value error
+                                        END;
+
+                  2. Column Too Small
+                                        INSERT INTO table(col VARCHAR2(2)) VALUES ('abc');
+                                        -- ❌ ORA-12899: value too large for column
+                  
+⚖️ Key Size Limits
+          Data Type	             Max in PL/SQL         	Max in SQL
+          VARCHAR2              	32,767 bytes	        4,000 bytes
+          CHAR                   	32,767 bytes	        2,000 bytes
+          CLOB                  	128 TB              	(4 GB - 1) * DB_BLOCK_SIZE
+
+🧠 Pro Tips
+          
+          Use VARCHAR2 for almost everything unless you need CHAR or CLOB.
+          Be cautious comparing CHAR and VARCHAR2 — trailing spaces matter.
+          Handle overflow errors (VALUE_ERROR) gracefully with exception blocks.
+          When saving long strings to a table, ensure your column data type can hold the entire value (use CLOB if necessary).
+
