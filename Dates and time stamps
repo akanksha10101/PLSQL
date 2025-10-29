@@ -1,0 +1,145 @@
+📅 Working with Dates in PL/SQL
+🔹 Overview
+
+Dates are more complex than strings or numbers — they have multiple parts:
+        → Year, Month, Day, Hour, Minute, Second.
+        Oracle provides true date/time data types with internal standard formats.
+        Includes built-in functions for date manipulation, conversion, and calculation.
+
+🔹 Date and Time Data Types
+                Data Type	                Description
+                DATE           	Stores date + time (to the second). No time zone. Most common.
+                TIMESTAMP	      Stores date + time up to 9 fractional seconds. Can include time zone.
+                INTERVAL	      Stores a duration of time, not a point in time. Two forms: YEAR TO MONTH, DAY TO SECOND.
+
+Example Declaration:
+
+            DECLARE
+               l_today_date        DATE := SYSDATE;
+               l_today_timestamp   TIMESTAMP := SYSTIMESTAMP;
+               l_today_timetzone   TIMESTAMP WITH TIME ZONE := SYSTIMESTAMP;
+               l_interval1         INTERVAL YEAR (4) TO MONTH := '2011-11';
+               l_interval2         INTERVAL DAY (2) TO SECOND := '15 00:30:44';
+            BEGIN
+               NULL;
+            END;
+
+🔹 Choosing the Right Data Type
+
+            Use TIMESTAMP when you need sub-second precision.
+            Use TIMESTAMP WITH TIME ZONE if tracking session time zone is needed.
+            Use TIMESTAMP WITH LOCAL TIME ZONE to auto-convert between DB and session zones.
+            Use DATE for compatibility with older Oracle systems.
+            Ensure PL/SQL variable types match the table column data type to avoid data loss.
+
+🔹 Getting Current Date and Time
+            Function	            Time Zone	          Returns
+            CURRENT_DATE	         Session	            DATE
+            CURRENT_TIMESTAMP	     Session	          TIMESTAMP WITH TIME ZONE
+            LOCALTIMESTAMP         Session	           TIMESTAMP
+            SYSDATE	            Database Server	         DATE
+            SYSTIMESTAMP	      Database Server     	TIMESTAMP WITH TIME ZONE
+
+            Example:
+            
+            BEGIN
+              DBMS_OUTPUT.put_line(SYSDATE);
+              DBMS_OUTPUT.put_line(SYSTIMESTAMP);
+              DBMS_OUTPUT.put_line(SYSDATE - SYSTIMESTAMP);
+            END;
+
+➡ Result: Shows date, timestamp with time zone, and difference (interval).
+
+🔹 Date to String Conversion
+
+          Use TO_CHAR() to format or display date/time values.
+          
+          Examples:
+          
+          TO_CHAR(SYSDATE)                          -- default format (DD-MON-YYYY)
+          TO_CHAR(SYSDATE, 'Day, DDth Month YYYY')  -- full day and month names
+          TO_CHAR(SYSDATE, 'FMDay, DDth Month YYYY') -- removes padding spaces
+          TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS')  -- show date + time
+          TO_CHAR(SYSDATE, 'Day', 'NLS_DATE_LANGUAGE=Spanish') -- localized output
+          
+          
+          Common Format Elements:
+         'YYYY' – year
+          'MM' – month
+          'DD' – day
+          'HH24' – hour (24-hour format)
+           'MI' – minutes
+          'SS' – seconds
+          'FM' – remove blank padding
+          
+🔹 Extracting Parts of a Date
+
+                  Use EXTRACT():
+                  
+                            EXTRACT(YEAR FROM SYSDATE)  → 2025
+                            EXTRACT(DAY FROM SYSDATE)   → 27
+                  
+                  
+                              Or use format masks with TO_CHAR:
+                              
+                              TO_CHAR(SYSDATE, 'Q')   -- Quarter (1–4)
+                              TO_CHAR(SYSDATE, 'DDD') -- Day of the year (1–366)
+
+🔹 String to Date Conversion
+
+            Use TO_DATE() or TO_TIMESTAMP().
+            Examples:
+            l_date := TO_DATE('12-JAN-2011');  -- uses default format
+            l_date := TO_DATE('January 12 2011', 'Month DD YYYY'); -- explicit mask
+            
+            
+            ⚠️ If string doesn’t match format:
+            ORA-01858: a non-numeric character was found where a numeric was expected
+            ✅ Best Practice: Always specify a format mask in TO_DATE/TO_TIMESTAMP.
+
+🔹 Truncating Dates
+
+                Use TRUNC() to remove time or round to a specific unit.
+                
+                Examples:
+                
+                TRUNC(SYSDATE)        -- sets time to 00:00:00
+                TRUNC(SYSDATE, 'MM')  -- first day of month
+                TRUNC(SYSDATE, 'Q')   -- first day of quarter
+                TRUNC(SYSDATE, 'Y')   -- first day of year
+
+🔹 Date Arithmetic
+
+                    Add/Subtract Numbers → days
+                    SYSDATE + 1      -- tomorrow
+                    SYSDATE - 1/24   -- one hour ago
+                    SYSDATE + 10/(60*60*24) -- 10 seconds later
+                    Subtract Dates → returns number of days between them
+                    l_date2 - l_date1 → 10
+                    Example Function:
+                    
+                    CREATE OR REPLACE FUNCTION your_age (birthdate_in IN DATE)
+                    RETURN NUMBER IS
+                    BEGIN
+                       RETURN SYSDATE - birthdate_in;
+                    END;
+
+🔹 Built-in Date Functions
+                      Function	Description
+                      ADD_MONTHS(date, n)	Adds/subtracts months
+                      NEXT_DAY(date, 'DAY')	Returns next occurrence of the given weekday
+                      LAST_DAY(date)	Returns last day of month
+                      
+                      Example:
+                      
+                      ADD_MONTHS(TO_DATE('31-JAN-2011','DD-MON-YYYY'), 1) → 28-FEB-2011
+                      ADD_MONTHS(TO_DATE('27-FEB-2011','DD-MON-YYYY'), -1) → 27-JAN-2011
+                      NEXT_DAY(SYSDATE, 'SATURDAY') → next Saturday’s date
+
+🧠 Key Takeaways
+
+                Use TIMESTAMP for modern apps; DATE for legacy compatibility.
+                Always specify format masks in conversions.
+                Use TRUNC(), ADD_MONTHS(), and NEXT_DAY() for clean date math.
+                Oracle auto-handles leap years and invalid dates (e.g., Feb 31 → Feb 28).
+                Be mindful of time zones and NLS settings for consistent results.
