@@ -1,0 +1,207 @@
+🔹 Purpose of PL/SQL Cursors
+
+            PL/SQL’s main goal: Make it efficient and easy to query and modify database tables.
+            Every SQL operation (SELECT, INSERT, UPDATE, DELETE, MERGE) uses a cursor internally.
+            A cursor is a pointer to a private SQL area that stores info about query execution.
+             PL/SQL supports several ways to execute SELECT statements using cursors.
+
+🔹 Five Common Ways to Execute SELECT Statements
+
+                SELECT-INTO statement (implicit cursor)
+                Explicit cursors (open, fetch, close manually)
+                Cursor FOR loops
+                Dynamic queries using EXECUTE IMMEDIATE
+                Cursor variables (REF CURSORs)
+
+🔸 1. SELECT-INTO (Implicit Cursor)
+
+              Used to fetch a single row into variables.
+              Syntax:
+              SELECT select_list INTO variable_list FROM table_name WHERE condition;
+              Exceptions:
+              NO_DATA_FOUND → no rows matched
+              TOO_MANY_ROWS → more than one row matched
+              
+              Example:
+              DECLARE
+                l_last_name employees.last_name%TYPE;
+              BEGIN
+                SELECT last_name INTO l_last_name
+                FROM employees WHERE employee_id = 138;
+                DBMS_OUTPUT.put_line(l_last_name);
+              END;
+              
+              
+              You can fetch:
+              
+              A single column
+              An entire row using %ROWTYPE
+              Columns from multiple tables
+              Errors if SELECT and INTO lists don’t match:
+              
+              Error	Cause
+              ORA-00947	Too few variables in INTO
+              ORA-00913	Too many variables in INTO
+              ORA-06502	Data type mismatch
+
+🔸 2. Explicit Cursors
+
+                Used for multi-row queries where you control the open–fetch–close cycle.
+                Steps:
+                
+                Declare the cursor
+                Open it
+                Fetch each row
+                Close it
+                
+                Example:
+                
+                DECLARE
+                  CURSOR employee_cur IS
+                    SELECT employee_id FROM employees ORDER BY salary ASC;
+                  l_emp employee_cur%ROWTYPE;
+                  l_total INTEGER := 10000;
+                BEGIN
+                  OPEN employee_cur;
+                  LOOP
+                    FETCH employee_cur INTO l_emp;
+                    EXIT WHEN employee_cur%NOTFOUND;
+                    assign_bonus(l_emp.employee_id, l_total);
+                    EXIT WHEN l_total <= 0;
+                  END LOOP;
+                  CLOSE employee_cur;
+                END;
+                
+                
+                Key notes:
+                
+                No NO_DATA_FOUND exception if no rows.
+                Must explicitly check %NOTFOUND.
+                 Best practice: always explicitly close the cursor.
+
+🔸 3. Cursor FOR Loop
+
+              Simplifies cursor usage — Oracle handles open, fetch, and close automatically.
+              
+              Syntax:
+              FOR record_name IN (SELECT * FROM employees WHERE department_id = 10)
+              LOOP
+                 DBMS_OUTPUT.put_line(record_name.last_name);
+              END LOOP;
+              Or with an explicit cursor:
+              
+              CURSOR emp_cur IS SELECT * FROM employees WHERE department_id = 10;
+              FOR emp_rec IN emp_cur LOOP
+                 DBMS_OUTPUT.put_line(emp_rec.last_name);
+              END LOOP;
+              
+              
+              Advantages:
+              Less code, automatic cursor handling.
+             Internally optimized — Oracle fetches rows in batches (100 at a time) for better performance.
+
+🔸 4. Dynamic Queries (EXECUTE IMMEDIATE)
+
+Used when the query text isn’t known until runtime.
+
+Example (single-row fetch):
+
+EXECUTE IMMEDIATE
+   'SELECT ' || column_in || ' FROM ' || table_in || ' WHERE ' || where_in
+   INTO l_result;
+
+
+Example (multi-row fetch with BULK COLLECT):
+
+EXECUTE IMMEDIATE
+   'SELECT ' || column_in || ' FROM ' || table_in || ' WHERE ' || where_in
+   BULK COLLECT INTO l_values;
+
+
+Risks: SQL Injection — sanitize inputs carefully.
+
+🔸 5. Cursor Variables (REF CURSORs)
+
+A cursor variable points to a query result set.
+
+Can be passed between procedures/functions.
+
+Declared as SYS_REFCURSOR.
+
+Example Function:
+
+CREATE OR REPLACE FUNCTION names_for(name_type_in VARCHAR2)
+RETURN SYS_REFCURSOR IS
+   l_cur SYS_REFCURSOR;
+BEGIN
+   CASE name_type_in
+      WHEN 'EMP' THEN
+         OPEN l_cur FOR SELECT last_name FROM employees;
+      WHEN 'DEPT' THEN
+         OPEN l_cur FOR SELECT department_name FROM departments;
+   END CASE;
+   RETURN l_cur;
+END;
+
+
+Usage:
+
+DECLARE
+   l_names SYS_REFCURSOR;
+   l_name  VARCHAR2(100);
+BEGIN
+   l_names := names_for('DEPT');
+   LOOP
+      FETCH l_names INTO l_name;
+      EXIT WHEN l_names%NOTFOUND;
+      DBMS_OUTPUT.put_line(l_name);
+   END LOOP;
+   CLOSE l_names;
+END;
+
+
+Can also use dynamic SQL:
+
+OPEN l_cur FOR query_string;
+
+🔸 Encapsulating SELECT-INTO in Functions
+
+Instead of repeating the same query:
+
+SELECT * INTO l_emp FROM employees WHERE employee_id = 138;
+
+
+Create a reusable function:
+
+CREATE OR REPLACE FUNCTION row_for_employee_id(emp_id IN NUMBER)
+RETURN employees%ROWTYPE IS
+   l_emp employees%ROWTYPE;
+BEGIN
+   SELECT * INTO l_emp FROM employees WHERE employee_id = emp_id;
+   RETURN l_emp;
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN RETURN NULL;
+END;
+
+
+Benefits:
+
+Reusability
+
+Centralized maintenance
+
+Cleaner, more maintainable code
+
+✅ Key Takeaways
+
+Implicit cursors → for single-row queries.
+
+Explicit cursors → for multi-row, step-by-step control.
+
+Cursor FOR loops → simplest for reading multiple rows.
+
+EXECUTE IMMEDIATE → for dynamic SQL at runtime.
+
+REF CURSORs → for flexible, reusable result sets.
+
+Always handle exceptions and close cursors explicitly when required.
