@@ -1,0 +1,242 @@
+🔹 Introduction
+
+          PL/SQL provides two powerful features for bulk data processing:
+                  BULK COLLECT → fetch multiple rows with a single fetch (faster data retrieval).
+                  FORALL → perform DML (INSERT/UPDATE/DELETE) on multiple rows efficiently.
+          
+          Purpose: Reduce the context switching between PL/SQL and SQL engines, which slows down performance.
+
+🔹 Why Context Switching Matters
+            
+            PL/SQL engine executes procedural code.
+            SQL engine executes SQL statements.
+            Each time PL/SQL calls a SQL statement, control “switches” between engines — a context switch.
+            Each context switch introduces performance overhead.
+
+          Example:
+          
+          Updating 100 employees in a loop causes 100 context switches → slow (“slow-by-slow” processing).
+          
+          Using FORALL, all 100 updates are sent to the SQL engine in one context switch → much faster.
+          
+          🔹 Example: Slow Row-by-Row Processing
+          Procedure: increase_salary (row-by-row)
+          PROCEDURE increase_salary (
+             department_id_in IN employees.department_id%TYPE,
+             increase_pct_in  IN NUMBER)
+          IS
+          BEGIN
+             FOR employee_rec IN (
+                SELECT employee_id FROM employees
+                WHERE department_id = increase_salary.department_id_in)
+             LOOP
+                UPDATE employees emp
+                   SET emp.salary = emp.salary + emp.salary * increase_salary.increase_pct_in
+                 WHERE emp.employee_id = employee_rec.employee_id;
+             END LOOP;
+          END increase_salary;
+          
+          
+          If 100 employees in the department → 100 context switches.
+
+
+🔹 Optimization 1: Pure SQL Solution
+
+              PROCEDURE increase_salary (
+                 department_id_in IN employees.department_id%TYPE,
+                 increase_pct_in  IN NUMBER)
+              IS
+              BEGIN
+                 UPDATE employees
+                    SET salary = salary + salary * increase_salary.increase_pct_in
+                  WHERE department_id = increase_salary.department_id_in;
+              END increase_salary;
+              
+              
+              Only one SQL statement, so one context switch.
+              
+              Best solution when logic is simple enough to stay within SQL.
+
+🔹 When You Can’t Use Only SQL
+
+        Sometimes, extra logic (like eligibility checks or email notifications) is needed:
+        check_eligibility(emp_id, pct_in, l_eligible);
+
+In such cases, BULK COLLECT and FORALL reduce the performance cost.
+
+🔹 Bulk Processing (BULK COLLECT + FORALL)
+Optimized Version:
+CREATE OR REPLACE PROCEDURE increase_salary (
+   department_id_in IN employees.department_id%TYPE,
+   increase_pct_in  IN NUMBER)
+IS
+   TYPE employee_ids_t IS TABLE OF employees.employee_id%TYPE INDEX BY PLS_INTEGER; 
+   l_employee_ids   employee_ids_t;
+   l_eligible_ids   employee_ids_t;
+   l_eligible       BOOLEAN;
+BEGIN
+   SELECT employee_id
+     BULK COLLECT INTO l_employee_ids
+     FROM employees
+    WHERE department_id = increase_salary.department_id_in;
+
+   FOR indx IN 1 .. l_employee_ids.COUNT LOOP
+      check_eligibility(l_employee_ids(indx), increase_pct_in, l_eligible);
+      IF l_eligible THEN
+         l_eligible_ids(l_eligible_ids.COUNT + 1) := l_employee_ids(indx);
+      END IF;
+   END LOOP;
+
+   FORALL indx IN 1 .. l_eligible_ids.COUNT
+      UPDATE employees
+         SET salary = salary + salary * increase_salary.increase_pct_in
+       WHERE employee_id = l_eligible_ids(indx);
+END increase_salary;
+
+🧩 Explanation of Key Lines
+Lines	Description
+5–8	Declare collection types and variables
+12–15	Fetch all employee IDs with BULK COLLECT (1 context switch)
+17–28	Check eligibility in PL/SQL
+30–35	Use FORALL to update salaries in bulk (1 context switch)
+
+✅ Total: only 2 context switches (1 for BULK COLLECT + 1 for FORALL)
+
+🔹 About BULK COLLECT
+
+Fetches multiple rows at once into PL/SQL collections.
+
+Works with:
+
+Associative arrays
+
+Nested tables
+
+Varrays
+
+Populates collection densely (from index 1 upward).
+If no rows fetched → collection is empty.
+
+Example:
+
+DECLARE
+   TYPE emp_rt IS RECORD (employee_id employees.employee_id%TYPE, salary employees.salary%TYPE);
+   TYPE emp_tab IS TABLE OF emp_rt;
+   l_emps emp_tab;
+BEGIN
+   SELECT employee_id, salary
+     BULK COLLECT INTO l_emps
+     FROM employees
+    WHERE department_id = 10;
+END;
+
+⚙️ Using BULK COLLECT with LIMIT
+
+Prevents memory overflow when fetching large result sets.
+
+DECLARE
+   c_limit PLS_INTEGER := 100;
+   CURSOR emp_cur IS SELECT employee_id FROM employees WHERE department_id = department_id_in;
+   TYPE emp_tab IS TABLE OF employees.employee_id%TYPE;
+   l_emp emp_tab;
+BEGIN
+   OPEN emp_cur;
+   LOOP
+      FETCH emp_cur BULK COLLECT INTO l_emp LIMIT c_limit;
+      EXIT WHEN l_emp.COUNT = 0;
+   END LOOP;
+END;
+
+
+Fetches 100 rows at a time → efficient memory and performance balance.
+
+🔹 About FORALL
+
+Used for bulk DML (INSERT, UPDATE, DELETE).
+
+Looks like a FOR loop but isn’t — executes all statements in one batch.
+
+Syntax:
+
+FORALL index IN lower_bound .. upper_bound
+   DML_statement;
+
+
+Rules:
+
+Only one DML per FORALL.
+
+Must reference a collection in the DML statement.
+
+Collections must be densely filled unless using special clauses.
+
+🔹 Handling DML Errors — SAVE EXCEPTIONS
+
+By default, if one row fails, FORALL stops.
+
+To continue processing remaining rows, use SAVE EXCEPTIONS.
+
+Example:
+
+BEGIN
+   FORALL indx IN 1 .. l_eligible_ids.COUNT SAVE EXCEPTIONS
+      UPDATE employees
+         SET salary = salary + salary * increase_pct_in
+       WHERE employee_id = l_eligible_ids(indx);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE = -24381 THEN
+         FOR indx IN 1 .. SQL%BULK_EXCEPTIONS.COUNT LOOP
+            DBMS_OUTPUT.put_line(
+              SQL%BULK_EXCEPTIONS(indx).ERROR_INDEX || ': ' ||
+              SQL%BULK_EXCEPTIONS(indx).ERROR_CODE);
+         END LOOP;
+      ELSE
+         RAISE;
+      END IF;
+END;
+
+
+Errors are stored in SQL%BULK_EXCEPTIONS.
+
+🔹 Sparse Collections and INDICES OF / VALUES OF
+
+If a collection has missing (undefined) indexes, using normal FORALL causes:
+
+ORA-22160: element at index [N] does not exist
+
+Use:
+
+FORALL indx IN INDICES OF l_employee_ids
+   UPDATE employees
+      SET salary = salary + salary * increase_salary.increase_pct_in
+    WHERE employee_id = l_employee_ids(indx);
+
+
+Skips undefined indexes safely.
+
+🔹 Performance Results
+
+Inserting 100,000 rows:
+
+Row-by-row: ~4.94 seconds
+
+FORALL (bulk DML): ~0.12 seconds
+⚡ ~40x faster performance
+
+✅ Key Takeaways
+
+BULK COLLECT → fetch many rows at once.
+
+FORALL → perform DML on many rows at once.
+
+Both minimize context switches between PL/SQL and SQL engines.
+
+Use LIMIT to manage memory.
+
+Use SAVE EXCEPTIONS to handle partial failures.
+
+Use INDICES OF / VALUES OF for sparse collections.
+
+Aim to do as much as possible in SQL, and when not possible, use bulk processing.
