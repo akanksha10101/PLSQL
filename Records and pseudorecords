@@ -1,0 +1,210 @@
+🔹 Overview: What Are PL/SQL Records?
+
+            A record is a composite data type that can hold multiple related values (unlike scalar types such as NUMBER or VARCHAR2).
+            Records make it easy to handle rows of data from tables within PL/SQL programs.
+            Oracle provides tight integration between SQL and PL/SQL, allowing direct operations on entire rows using records.
+            Records are crucial for transactional applications that frequently read or modify table data.
+
+🔸 Declaring Records with %ROWTYPE
+
+              %ROWTYPE creates a record whose structure matches a table, view, or cursor.
+              Each field in the record corresponds to a column in the table or SELECT list of a cursor.
+              
+              Example:
+              l_employee company_employees%ROWTYPE;
+              Fields: l_employee.employee_id, l_employee.last_name, l_employee.salary
+              
+              Advantages:
+              Automatically adapts to table structure changes.
+              Simplifies maintenance and readability.
+
+🔸 Using %ROWTYPE in Procedures
+            Without record:
+            l_employee_id company_employees.employee_id%TYPE;
+            l_last_name   company_employees.last_name%TYPE;
+            l_salary      company_employees.salary%TYPE;
+
+            With record:
+            l_employee company_employees%ROWTYPE;
+            
+            SELECT *
+            INTO l_employee
+            FROM company_employees
+            WHERE employee_id = employee_id_in;
+
+
+        ✅ Cleaner, shorter, and auto-updates with table definition changes.
+
+🔸 Using %ROWTYPE with Cursors
+
+              You can define a record based on a cursor’s SELECT list.
+               Keeps SELECT columns and record fields in sync automatically.
+              Example:
+              CURSOR no_ids_cur IS
+                SELECT last_name, salary FROM company_employees;
+              
+              l_employee no_ids_cur%ROWTYPE;
+
+🔸 Working with Record Variables
+                Accessing and modifying fields:
+                DBMS_OUTPUT.put_line(l_employee.last_name);
+                l_employee.last_name := 'Picasso';
+                
+                Record-level operations:
+                 Set all fields to NULL:
+                l_employee := NULL;
+                Assign one record to another:
+                l_employee1 := l_employee2;
+
+🔸 Populating Records
+
+                  From a table:
+                  SELECT * INTO l_employee
+                  FROM company_employees
+                  WHERE employee_id = 100;
+                  
+                  
+                  From a cursor:
+                  OPEN no_ids_cur;
+                  FETCH no_ids_cur INTO l_employee;
+                  CLOSE no_ids_cur;
+                  
+                  
+                  Using dynamic SQL:
+                  EXECUTE IMMEDIATE 'SELECT * FROM company_employees' INTO l_employee;
+                  Using assignments:
+                   l_employee.last_name := 'Renoir';
+                  l_employee.salary := 1500;
+                  
+                 Assigning between records:
+                  l_new_employee := l_old_employee;
+                  l_old_employee := NULL;
+
+🔸 Cursor FOR Loops and Implicit Records
+
+            PL/SQL implicitly declares a record for each row in a cursor FOR loop.
+            
+            No need to declare or open/fetch/close cursors manually.
+            
+            Example:
+            BEGIN
+              FOR employee_rec IN (SELECT last_name FROM company_employees ORDER BY last_name)
+              LOOP
+                DBMS_OUTPUT.put_line(employee_rec.last_name);
+              END LOOP;
+            END;
+            
+            
+            ✅ employee_rec is an implicit %ROWTYPE record.
+
+🔸 Passing Records as Parameters
+            Traditional way:
+                      CREATE PROCEDURE show_employee (
+                        employee_id_in IN company_employees.employee_id%TYPE,
+                        last_name_in   IN company_employees.last_name%TYPE,
+                        salary_in      IN company_employees.salary%TYPE);
+                      
+                      Simplified using record:
+                      CREATE PROCEDURE show_employee (employee_in IN company_employees%ROWTYPE)
+                      IS
+                      BEGIN
+                        DBMS_OUTPUT.put_line(employee_in.employee_id || '-' || employee_in.last_name || '-' || employee_in.salary);
+                      END;
+            
+            
+            ✅ Reduces the number of parameters for wide tables.
+
+🔸 Using Records in DML (INSERT & UPDATE)
+                  Regular INSERT:
+                  INSERT INTO company_employees (employee_id, last_name, salary)
+                  VALUES (500, 'Mondrian', 2000);
+                  
+                  Record-based INSERT:
+                          l_employee.employee_id := 500;
+                          l_employee.last_name := 'Mondrian';
+                          l_employee.salary := 2000;
+                  
+                  INSERT INTO company_employees VALUES l_employee;
+                  
+                  Record-based UPDATE:
+                  UPDATE company_employees
+                     SET ROW = l_employee
+                   WHERE employee_id = 100;
+                  
+                  
+                  ⚠️ Caution: Updates all columns, including primary keys.
+
+🔸 User-Defined Record Types
+                Custom record declaration:
+                TYPE customer_info_rt IS RECORD (
+                  name         VARCHAR2(100),
+                  total_sales  NUMBER,
+                  deliver_pref VARCHAR2(10)
+                );
+                
+                l_customer1 customer_info_rt;
+                l_customer2 customer_info_rt;
+                
+                
+                ✅ Advantages:
+                
+                Reduces repetitive variable declarations.
+                Groups related information logically.
+                Supports PL/SQL-only data types (e.g., BOOLEAN).
+                
+                Example with BOOLEAN:
+                TYPE user_preferences_rt IS RECORD (
+                  show_full_name BOOLEAN,
+                  autologin      BOOLEAN
+                );
+
+🔸 Nested (Composite) Records
+
+              You can define a record inside another record.
+              
+              Example:
+              TYPE phone_rt IS RECORD (
+                area_code  PLS_INTEGER,
+                exchange   PLS_INTEGER,
+                phn_number PLS_INTEGER,
+                extension  PLS_INTEGER
+              );
+              
+              TYPE contact_rt IS RECORD (
+                day_phone#  phone_rt,
+                eve_phone#  phone_rt,
+                cell_phone# phone_rt
+              );
+              
+              l_sales_rep contact_rt;
+              
+              
+              ✅ Enables modeling complex, structured data.
+
+🔸 Pseudorecords in Triggers
+
+          In row-level triggers, Oracle provides:
+          :NEW → values after INSERT/UPDATE.
+          :OLD → values before UPDATE/DELETE.
+          Structure similar to %ROWTYPE but cannot be passed as parameters.
+          Example: Prevent salary increase
+          CREATE OR REPLACE TRIGGER company_employees_freeze_trg
+          BEFORE INSERT OR UPDATE ON company_employees
+          FOR EACH ROW
+          BEGIN
+            IF :NEW.salary > :OLD.salary THEN
+              RAISE_APPLICATION_ERROR(-20000, 'Salary freeze in effect: no increases allowed!');
+            END IF;
+          END;
+          
+          🔹 Key Advantages of Using Records
+          
+          Simplifies code by reducing variable lists.
+          
+          Keeps PL/SQL and table definitions synchronized.
+          
+          Supports record-level operations (assignment, NULL, DML).
+          
+          Allows flexible, reusable custom record types.
+
+Improves readability and maintainability.
