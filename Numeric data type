@@ -1,0 +1,128 @@
+🔹 Overview: Numeric Data Types in PL/SQL
+
+                    PL/SQL provides multiple numeric types to support different levels of precision, performance, and storage.
+                    Most arithmetic in Oracle is performed using NUMBER, but specialized types exist for optimization.
+
+🔸 Main Numeric Data Types
+          1. NUMBER
+                      A true decimal data type (platform-independent).
+                      Used for monetary, integer, fixed-point, or floating-point calculations.
+                      Range:
+                      Smallest ≈ 1.0E–130 (anything smaller → rounds to 0).
+                      Largest ≈ 1.0E126 – 1 (anything larger → undefined result).
+                      Default precision: up to 40 digits.
+                      
+                      Declaration:
+                      
+                      DECLARE
+                         l_salary NUMBER;
+                      Can be constrained:
+                      l_amount NUMBER(8,2);  -- precision=8, scale=2
+                      Precision → total significant digits.
+                      Scale → digits to right (+) or left (–) of decimal point.
+                      Range: precision 1–38, scale –84 to 127.
+          
+          2. PLS_INTEGER
+          
+                        Stores signed integers from –2,147,483,648 to +2,147,483,647.
+                        Uses native machine arithmetic → faster than NUMBER.
+                        PL/SQL-only type (not stored in tables).
+                        Ideal for:
+                        Loop counters.
+                        Integer arithmetic in compute-intensive operations.
+                        Avoid if frequent conversions with NUMBER are needed (can slow performance).
+                        DECLARE
+                           loop_counter PLS_INTEGER;
+          
+          3. SIMPLE_INTEGER
+          
+                          Optimized version of PLS_INTEGER for natively compiled code.
+                          Faster execution, but less frequently used.
+                          Not covered in detail here.
+          
+          4. BINARY_FLOAT / BINARY_DOUBLE
+                            
+                            IEEE-754 binary floating-point data types.
+                            Used for high-performance scientific or computation-intensive tasks.
+                            Hardware-dependent (not fully platform-independent).
+                            Introduced after Oracle 10g.
+          
+          5. Other Synonyms / Subtypes
+          
+                      INTEGER, FLOAT, DECIMAL → subtypes of the core types above.
+                      
+                      ⚙️ Key Example – Range Demonstration (NUMBER)
+                      DECLARE
+                         tiny_nbr NUMBER := 1e-130;
+                         big_nbr  NUMBER := 9.999999999999999999999999999999999999999e125;
+                         test_nbr NUMBER;
+                      BEGIN
+                         DBMS_OUTPUT.PUT_LINE('tiny_nbr = ' || TO_CHAR(tiny_nbr, '9.9999EEEE'));
+                         test_nbr := tiny_nbr / 1.0001;  -- too small → rounds to zero
+                         DBMS_OUTPUT.PUT_LINE('tiny made smaller = ' || TO_CHAR(test_nbr));
+                         DBMS_OUTPUT.PUT_LINE('big_nbr = ' || TO_CHAR(big_nbr));
+                         test_nbr := big_nbr * 1.0001;   -- too big → runtime error
+                      END;
+                      
+                      
+                      Output:
+                      
+                      tiny_nbr          = 1.0000E-130
+                      tiny made smaller = 0
+                      big_nbr           = 9.99999999999999999999999999999999999999900E+125
+                      big made bigger   = ###############################
+
+🔹 Common Built-in Numeric Functions
+              1. ROUND (number [, decimals])
+              
+                        Rounds number to specified decimal places.
+                         ROUND(10.25) → 10
+                        ROUND(10.25, 1) → 10.3
+                        ROUND(125, -2) → 100
+
+              2. TRUNC (number [, decimals])
+              
+                        Truncates digits without rounding.
+                        TRUNC(10.27, 1) → 10.2
+                        TRUNC(123.456, -2) → 100
+
+                3. FLOOR and CEIL
+                
+                        FLOOR(x) → largest integer ≤ x.
+                        CEIL(x) → smallest integer ≥ x.
+                        FLOOR(1.5) → 1
+                        CEIL(1.5)  → 2
+
+                  4. MOD and REMAINDER
+                  
+                            Both return remainder, but use different formulas.
+                            
+                            MOD(15, 4) → 3
+                            REMAINDER(15, 4) → -1
+
+                5. TO_CHAR (number [, format])
+                
+                          Converts a number to a formatted string.
+                           Example (default):
+                          TO_CHAR(100.55) → '100.55'
+                          Example (with formatting):
+                          TO_CHAR(10000, '9G999G999') → ' 10,000'
+                          TO_CHAR(10000, 'FM9G999G999') → '10,000'
+                          TO_CHAR(14500.77, 'FML999G999D99') → '$14,500.77'
+
+
+G → group separator (thousands).
+
+D → decimal point.
+
+L → local currency symbol.
+
+FM → removes leading/trailing spaces.
+
+⚖️ Best Practices
+
+Use NUMBER for general numeric storage and arithmetic.
+Use PLS_INTEGER for counters and fast integer operations.
+Constrain precision/scale to match business rules.
+Be careful with rounding and overflow behavior.
+Use TO_CHAR with format masks for reports and currency display.
