@@ -1,0 +1,216 @@
+🔹 Introduction to Collections
+                          
+                          Collections are groups of related data elements (like arrays in other languages).
+                          They are key to PL/SQL performance optimization through features such as:
+                          
+                                                  BULK COLLECT – retrieves multiple rows in a single fetch (faster data retrieval).
+                                                 FORALL – performs bulk DML (insert/update/delete) operations efficiently.
+                          
+                          Table functions – PL/SQL functions returning collections that can be queried like tables.
+                         You can also use collections to manage in-memory lists of data that aren’t stored in tables.
+
+🔹 Collections Vocabulary
+                        Term	              Meaning
+                        Index value	        Position of data in the collection; usually an integer (can be a string for associative arrays).
+                        Element	             The data item stored at an index (all elements must be of the same data type).
+                        Homogeneous         	All elements in a collection share the same data type.
+                        Sparse collection	    Some index values are missing between lowest and highest indexes.
+                        Dense collection	    Every index between lowest and highest is defined.
+                        Method	               Built-in function/procedure acting on a collection (e.g., .FIRST, .LAST, .DELETE).
+
+
+🔹 Types of Collections in PL/SQL
+
+        1. Associative Array (formerly PL/SQL table)
+                      
+                      Indexed by integer or string.
+                      Can be sparse or dense.
+                      Exists only in PL/SQL memory, not in database tables.
+                      Ideal for temporary, dynamic in-memory storage.
+
+              2. Nested Table
+              
+              Can be used in PL/SQL blocks and SQL statements.
+              Can be stored as a column type in a table.
+              Usually dense, but can become sparse.
+              Indexed only by integer.
+              Supports MULTISET operations (e.g., EXCEPT, UNION, INTERSECT).
+
+            3. Varray (Variable-Size Array)
+            
+            Can be used in PL/SQL and SQL, and stored in database columns.
+            Always dense.
+            Indexed by integer.
+            Must define maximum number of elements during type declaration.
+            Rarely used, since limits are predefined.
+
+        ✅ Most common: Associative arrays (flexible, memory-only).
+        ✅ Most powerful in SQL: Nested tables.
+        ⚠️ Least used: Varrays (fixed size).
+
+🔸 Example: Nested Table
+DECLARE
+   TYPE list_of_names_t IS TABLE OF VARCHAR2(100);
+   happyfamily list_of_names_t := list_of_names_t();
+   children    list_of_names_t := list_of_names_t();
+   parents     list_of_names_t := list_of_names_t();
+BEGIN
+   happyfamily.EXTEND(4);
+   happyfamily(1) := 'Veva';
+   happyfamily(2) := 'Chris';
+   happyfamily(3) := 'Eli';
+   happyfamily(4) := 'Steven';
+
+   children.EXTEND; children(children.LAST) := 'Chris';
+   children.EXTEND; children(children.LAST) := 'Eli';
+
+   parents := happyfamily MULTISET EXCEPT children;
+
+   FOR l_row IN 1 .. parents.COUNT LOOP
+      DBMS_OUTPUT.put_line(parents(l_row));
+   END LOOP;
+END;
+
+
+Output:
+
+Veva
+Steven
+
+
+Explanation:
+
+          Declares and initializes three nested tables.
+          Uses EXTEND to add elements.
+          Uses MULTISET EXCEPT to remove children from family.
+
+Iterates through and prints remaining elements.
+
+          🔹 Declaring Collection Types
+          Associative Array (integer index)
+          TYPE numbers_aat IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+
+            Associative Array (string index)
+            TYPE numbers_aat IS TABLE OF NUMBER INDEX BY VARCHAR2(100);
+
+            Nested Table
+            TYPE numbers_nt IS TABLE OF NUMBER;
+            
+            Varray
+            TYPE numbers_vat IS VARRAY(10) OF NUMBER;
+
+
+              Naming convention:
+              
+                      _aat → Associative array type
+                      
+                      _nt → Nested table type
+                      
+                      _vat → Varray type
+
+Rules:
+
+          INDEX BY → associative array.
+          
+          VARRAY keyword → varray.
+          
+          Neither INDEX BY nor VARRAY → nested table.
+
+        Only associative arrays can use non-integer indexes.
+
+        Varrays require maximum size defined.
+
+🔹 Initializing Collections
+            Example:
+            DECLARE
+               TYPE numbers_nt IS TABLE OF NUMBER;
+               l_numbers numbers_nt;
+            BEGIN
+               l_numbers := numbers_nt(1, 2, 3);
+            END;
+
+
+✅ Constructor numbers_nt() initializes and optionally populates the collection.
+⚠️ Without initialization → ORA-06531: Reference to uninitialized collection.
+
+Associative arrays don’t need initialization before assigning values.
+
+🔹 Populating Collections
+1. Assign single element:
+l_numbers(100) := 12345;
+
+2. Assign one collection to another:
+l_numbers2 := l_numbers1;
+
+3. Pass collection as IN OUT parameter:
+PROCEDURE empty_collection (numbers_io IN OUT numbers_aat) IS
+BEGIN
+   numbers_io.DELETE;
+END;
+
+4. Bulk collect from query:
+SELECT employee_id
+BULK COLLECT INTO l_numbers
+FROM employees
+ORDER BY last_name;
+
+🔹 Iterating Through Collections
+✅ Use numeric FOR loop for dense collections:
+FOR indx IN names_in.FIRST .. names_in.LAST LOOP
+   DBMS_OUTPUT.put_line(names_in(indx));
+END LOOP;
+
+✅ Use WHILE loop for sparse collections:
+l_index := names_in.FIRST;
+WHILE (l_index IS NOT NULL) LOOP
+   DBMS_OUTPUT.put_line(names_in(l_index));
+   l_index := names_in.NEXT(l_index);
+END LOOP;
+
+✅ Reverse iteration:
+l_index := names_in.LAST;
+WHILE (l_index IS NOT NULL) LOOP
+   DBMS_OUTPUT.put_line(names_in(l_index));
+   l_index := names_in.PRIOR(l_index);
+END LOOP;
+
+
+Common methods:
+
+.FIRST → lowest index
+
+.LAST → highest index
+
+.NEXT(i) → next higher index
+
+.PRIOR(i) → next lower index
+
+🔹 Deleting Elements
+Operation	Description
+l_names.DELETE;	Delete all elements
+l_names.DELETE(l_names.FIRST);	Delete one element
+l_names.DELETE(100,200);	Delete range of elements
+l_names.TRIM;	Remove last element (nested tables/varrays)
+l_names.TRIM(3);	Remove last 3 elements
+
+DELETE works for all collection types (range/element form only for associative arrays and nested tables).
+
+TRIM works only for nested tables and varrays.
+
+Deleting undefined index values → no error raised.
+
+🔹 Key Takeaways
+
+Collections enable in-memory data manipulation and bulk processing for performance.
+
+Associative arrays → flexible, memory-only, dynamic.
+
+Nested tables → powerful, SQL-compatible, allow set operations.
+
+Varrays → rarely used; fixed maximum size.
+
+Use .FIRST, .LAST, .NEXT, .PRIOR, .DELETE, .TRIM for navigation and management.
+
+Always initialize nested tables/varrays before use.
+
+Choose FOR loops for dense and WHILE loops for sparse collections.
